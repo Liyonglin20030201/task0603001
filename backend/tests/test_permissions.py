@@ -95,3 +95,57 @@ def test_revoke_permission(client, db, editor_user, editor_headers, viewer_user)
 
     perms_resp = client.get(f"/api/documents/{doc.id}/permissions", headers=editor_headers)
     assert len(perms_resp.json()) == 0
+
+
+def test_list_filters_restricted_docs(client, db, editor_user, editor_headers, viewer_user, viewer_headers):
+    """Docs with explicit permissions not granting viewer should be hidden from list."""
+    doc = _create_doc(db, editor_user.id)
+
+    # Before any explicit permissions, viewer can see the doc (role-based fallback)
+    list_resp = client.get("/api/documents", headers=viewer_headers)
+    assert list_resp.json()["total"] == 1
+
+    # Grant access to someone else only — viewer is excluded
+    other = create_test_user(db, "other_editor2", "editor")
+    client.post(f"/api/documents/{doc.id}/permissions", headers=editor_headers, json={"user_id": other.id, "permission_level": "read"})
+
+    # Now viewer should NOT see this doc in the list
+    list_resp = client.get("/api/documents", headers=viewer_headers)
+    assert list_resp.json()["total"] == 0
+
+    # Owner still sees it
+    list_resp = client.get("/api/documents", headers=editor_headers)
+    assert list_resp.json()["total"] == 1
+
+
+def test_list_shows_docs_with_user_permission(client, db, editor_user, editor_headers, viewer_user, viewer_headers):
+    """Docs with explicit permissions granting viewer should show in list."""
+    doc = _create_doc(db, editor_user.id)
+
+    # Grant viewer access
+    client.post(f"/api/documents/{doc.id}/permissions", headers=editor_headers, json={"user_id": viewer_user.id, "permission_level": "read"})
+
+    list_resp = client.get("/api/documents", headers=viewer_headers)
+    assert list_resp.json()["total"] == 1
+
+
+def test_write_endpoint_uses_permission_check(client, db, editor_user, editor_headers, viewer_user, viewer_headers):
+    """Editor without write permission on a restricted doc cannot update it."""
+    other_editor = create_test_user(db, "editor_b", "editor")
+    other_headers = get_auth_headers(other_editor)
+    doc = _create_doc(db, editor_user.id)
+
+    # Restrict doc by granting access to viewer only — other_editor is NOT in the list
+    client.post(f"/api/documents/{doc.id}/permissions", headers=editor_headers, json={"user_id": viewer_user.id, "permission_level": "read"})
+
+    # other_editor cannot update doc (explicit permissions exist, they're not listed)
+    resp = client.put(f"/api/documents/{doc.id}", headers=other_headers, json={"title": "Hacked"})
+    assert resp.status_code == 403
+
+    # Grant write permission to other_editor
+    client.post(f"/api/documents/{doc.id}/permissions", headers=editor_headers, json={"user_id": other_editor.id, "permission_level": "write"})
+
+    # Now other_editor can update
+    resp = client.put(f"/api/documents/{doc.id}", headers=other_headers, json={"title": "Updated Title"})
+    assert resp.status_code == 200
+    assert resp.json()["title"] == "Updated Title"

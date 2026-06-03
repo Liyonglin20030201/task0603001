@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, exists, func, select
 from datetime import datetime
 from typing import Optional
 import math
@@ -10,6 +10,7 @@ from app.dependencies import get_db, get_current_user, require_role, check_docum
 from app.models.user import User
 from app.models.document import Document
 from app.models.document_version import DocumentVersion
+from app.models.document_permission import DocumentPermission
 from app.schemas.document import DocumentOut, DocumentUpdate, DocumentListResponse, DocumentVersionOut
 from app.services.document_service import process_upload, upload_new_version, rollback_to_version
 
@@ -60,6 +61,29 @@ def list_documents(
     current_user: User = Depends(get_current_user),
 ):
     query = db.query(Document).filter(Document.is_deleted == False)
+
+    # Permission filtering: non-admin users should not see docs they cannot access
+    if current_user.role != "admin":
+        # Subquery: IDs of documents that have explicit permissions set
+        docs_with_perms = (
+            select(DocumentPermission.document_id)
+            .distinct()
+            .scalar_subquery()
+        )
+        # User can see a document if:
+        # 1. They own it, OR
+        # 2. The document has NO explicit permissions (fallback to role-based), OR
+        # 3. The document has explicit permissions AND user is in the list
+        user_permitted_docs = (
+            select(DocumentPermission.document_id)
+            .where(DocumentPermission.user_id == current_user.id)
+            .scalar_subquery()
+        )
+        query = query.filter(
+            (Document.owner_id == current_user.id)
+            | (~Document.id.in_(docs_with_perms))
+            | (Document.id.in_(user_permitted_docs))
+        )
 
     if project_id:
         query = query.filter(Document.project_id == project_id)
@@ -112,8 +136,8 @@ def update_document(
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    if current_user.role != "admin" and doc.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not allowed")
+    if not check_document_access(doc, current_user, "write", db):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     if update_data.title is not None:
         doc.title = update_data.title
@@ -134,8 +158,8 @@ def delete_document(
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    if current_user.role != "admin" and doc.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not allowed")
+    if not check_document_access(doc, current_user, "write", db):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     doc.is_deleted = True
     doc.deleted_at = datetime.utcnow()
@@ -168,8 +192,8 @@ def create_version(
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    if current_user.role != "admin" and doc.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not allowed")
+    if not check_document_access(doc, current_user, "write", db):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     file_bytes = file.file.read()
     version = upload_new_version(db, doc, file_bytes, file.filename, current_user.id)
@@ -185,6 +209,8 @@ def list_versions(
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    if not check_document_access(doc, current_user, "read", db):
+        raise HTTPException(status_code=403, detail="Access denied")
     return doc.versions
 
 
@@ -195,6 +221,11 @@ def download_version(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not check_document_access(doc, current_user, "read", db):
+        raise HTTPException(status_code=403, detail="Access denied")
     version = db.query(DocumentVersion).filter(
         DocumentVersion.document_id == doc_id,
         DocumentVersion.version_number == version_number,
@@ -214,8 +245,8 @@ def rollback_version(
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    if current_user.role != "admin" and doc.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not allowed")
+    if not check_document_access(doc, current_user, "write", db):
+        raise HTTPException(status_code=403, detail="Access denied")
     if doc.current_version == version_number:
         raise HTTPException(status_code=400, detail="Already at this version")
 
@@ -235,6 +266,8 @@ def get_preview(
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    if not check_document_access(doc, current_user, "read", db):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     latest_version = db.query(DocumentVersion).filter(
         DocumentVersion.document_id == doc_id,

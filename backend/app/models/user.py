@@ -19,3 +19,4 @@ class User(Base):
     documents = relationship("Document", back_populates="owner")
     comments = relationship("Comment", back_populates="user")
     projects_created = relationship("Project", foreign_keys="[Project.created_by]", back_populates="creator")
+    project_memberships = relationship("ProjectMember", back_populates="user", cascade="all, delete-orphan")

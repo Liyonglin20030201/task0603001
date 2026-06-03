@@ -16,4 +16,4 @@ class ProjectMember(Base):
     joined_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     project = relationship("Project", back_populates="members")
-    user = relationship("User")
+    user = relationship("User", back_populates="project_memberships")
