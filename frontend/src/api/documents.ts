@@ -38,3 +38,6 @@ export const getDownloadUrl = (docId: number, versionNumber: number) =>
 
 export const compareVersions = (docId: number, v1: number, v2: number) =>
   client.get(`/documents/${docId}/versions/compare`, { params: { v1, v2 } })
+
+export const recordAccess = (docId: number) =>
+  client.post(`/documents/${docId}/access`)

@@ -139,6 +139,30 @@ def get_document(doc_id: int, db: Session = Depends(get_db), current_user: User 
     return doc
 
 
+@router.post("/{doc_id}/access", status_code=status.HTTP_204_NO_CONTENT)
+def record_access(
+    doc_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    doc = db.query(Document).filter(Document.id == doc_id, Document.is_deleted == False).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not check_document_access(doc, current_user, "read", db):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    access = db.query(DocumentAccess).filter(
+        DocumentAccess.user_id == current_user.id,
+        DocumentAccess.document_id == doc.id,
+    ).first()
+    if access:
+        access.accessed_at = datetime.now(timezone.utc)
+    else:
+        access = DocumentAccess(user_id=current_user.id, document_id=doc.id)
+        db.add(access)
+    db.commit()
+
+
 @router.put("/{doc_id}", response_model=DocumentOut)
 def update_document(
     doc_id: int,

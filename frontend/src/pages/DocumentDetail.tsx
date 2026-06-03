@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { Tabs, Typography, Descriptions, Tag, Spin, message } from 'antd'
-import { getDocument, getPreviewUrl } from '../api/documents'
+import { getDocument, getPreviewUrl, recordAccess } from '../api/documents'
 import { DocumentItem } from '../types'
 import VersionList from '../components/VersionList'
 import CommentList from '../components/CommentList'
@@ -29,6 +29,12 @@ export default function DocumentDetail() {
   }
 
   useEffect(() => { fetchDoc() }, [id])
+
+  useEffect(() => {
+    if (id) {
+      recordAccess(Number(id)).catch(() => {})
+    }
+  }, [id])
 
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />
   if (!doc) return <Typography.Text type="danger">文档不存在</Typography.Text>

@@ -14,5 +14,5 @@ class DocumentAccess(Base):
     document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
     accessed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    user = relationship("User")
-    document = relationship("Document")
+    user = relationship("User", back_populates="document_accesses")
+    document = relationship("Document", back_populates="accesses")

@@ -14,7 +14,7 @@ class FavoriteCategory(Base):
     name = Column(String(100), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    user = relationship("User")
+    user = relationship("User", back_populates="favorite_categories")
     favorites = relationship("Favorite", back_populates="category")
 
 
@@ -28,6 +28,6 @@ class Favorite(Base):
     category_id = Column(Integer, ForeignKey("favorite_categories.id"), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    user = relationship("User")
+    user = relationship("User", back_populates="favorites")
     document = relationship("Document")
     category = relationship("FavoriteCategory", back_populates="favorites")

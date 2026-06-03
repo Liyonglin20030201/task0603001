@@ -20,3 +20,6 @@ class User(Base):
     comments = relationship("Comment", back_populates="user")
     projects_created = relationship("Project", foreign_keys="[Project.created_by]", back_populates="creator")
     project_memberships = relationship("ProjectMember", back_populates="user", cascade="all, delete-orphan")
+    favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
+    favorite_categories = relationship("FavoriteCategory", back_populates="user", cascade="all, delete-orphan")
+    document_accesses = relationship("DocumentAccess", back_populates="user", cascade="all, delete-orphan")

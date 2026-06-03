@@ -28,3 +28,4 @@ class Document(Base):
     tags = relationship("Tag", secondary="document_tags", back_populates="documents")
     comments = relationship("Comment", back_populates="document", order_by="Comment.created_at")
     permissions = relationship("DocumentPermission", back_populates="document", cascade="all, delete-orphan")
+    accesses = relationship("DocumentAccess", back_populates="document", cascade="all, delete-orphan")
