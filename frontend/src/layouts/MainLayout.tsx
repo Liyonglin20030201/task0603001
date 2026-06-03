@@ -7,6 +7,8 @@ import {
   DeleteOutlined,
   UserOutlined,
   LogoutOutlined,
+  SearchOutlined,
+  StarOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/authStore'
 
@@ -19,6 +21,8 @@ export default function MainLayout() {
 
   const menuItems = [
     { key: '/', icon: <FileTextOutlined />, label: '文档列表' },
+    { key: '/search', icon: <SearchOutlined />, label: '全文搜索' },
+    { key: '/favorites', icon: <StarOutlined />, label: '我的收藏' },
     ...(user?.role !== 'viewer'
       ? [{ key: '/upload', icon: <UploadOutlined />, label: '上传文档' }]
       : []),

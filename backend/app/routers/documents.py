@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Q
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, exists, func, select
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 import math
 
@@ -11,6 +11,7 @@ from app.models.user import User
 from app.models.document import Document
 from app.models.document_version import DocumentVersion
 from app.models.document_permission import DocumentPermission
+from app.models.document_access import DocumentAccess
 from app.schemas.document import DocumentOut, DocumentUpdate, DocumentListResponse, DocumentVersionOut
 from app.services.document_service import process_upload, upload_new_version, rollback_to_version
 
@@ -123,6 +124,18 @@ def get_document(doc_id: int, db: Session = Depends(get_db), current_user: User 
         raise HTTPException(status_code=404, detail="Document not found")
     if not check_document_access(doc, current_user, "read", db):
         raise HTTPException(status_code=403, detail="Access denied")
+
+    access = db.query(DocumentAccess).filter(
+        DocumentAccess.user_id == current_user.id,
+        DocumentAccess.document_id == doc.id,
+    ).first()
+    if access:
+        access.accessed_at = datetime.now(timezone.utc)
+    else:
+        access = DocumentAccess(user_id=current_user.id, document_id=doc.id)
+        db.add(access)
+    db.commit()
+
     return doc
 
 
@@ -278,6 +291,56 @@ def get_preview(
         raise HTTPException(status_code=404, detail="Preview not available")
 
     return FileResponse(latest_version.preview_path, media_type="application/pdf")
+
+
+@router.get("/{doc_id}/versions/compare")
+def compare_versions(
+    doc_id: int,
+    v1: int = Query(..., description="Left version number"),
+    v2: int = Query(..., description="Right version number"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not check_document_access(doc, current_user, "read", db):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    version_left = db.query(DocumentVersion).filter(
+        DocumentVersion.document_id == doc_id,
+        DocumentVersion.version_number == v1,
+    ).first()
+    version_right = db.query(DocumentVersion).filter(
+        DocumentVersion.document_id == doc_id,
+        DocumentVersion.version_number == v2,
+    ).first()
+
+    if not version_left or not version_right:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    from app.services.parser_service import extract_text
+    from app.services.diff_service import compute_diff
+
+    text_left = extract_text(version_left.file_path, doc.file_type) or ""
+    text_right = extract_text(version_right.file_path, doc.file_type) or ""
+
+    diff_lines = compute_diff(text_left, text_right)
+
+    stats = {
+        "additions": sum(1 for d in diff_lines if d["type"] == "add"),
+        "deletions": sum(1 for d in diff_lines if d["type"] == "delete"),
+        "changes": sum(1 for d in diff_lines if d["type"] == "change"),
+        "total_lines": len(diff_lines),
+    }
+
+    return {
+        "document_id": doc_id,
+        "version_left": v1,
+        "version_right": v2,
+        "diff_lines": diff_lines,
+        "stats": stats,
+    }
 
 
 import os

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Table, Button, Tag, message, Upload, Popconfirm } from 'antd'
-import { UploadOutlined, RollbackOutlined, DownloadOutlined } from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
+import { Table, Button, Tag, message, Upload, Popconfirm, Checkbox } from 'antd'
+import { UploadOutlined, RollbackOutlined, DownloadOutlined, SwapOutlined } from '@ant-design/icons'
 import { listVersions, rollbackVersion, uploadVersion, getDownloadUrl } from '../api/documents'
 import { DocumentVersion } from '../types'
 import { useAuthStore } from '../store/authStore'
@@ -13,8 +14,10 @@ interface Props {
 }
 
 export default function VersionList({ docId, currentVersion, onRollback }: Props) {
+  const navigate = useNavigate()
   const [versions, setVersions] = useState<DocumentVersion[]>([])
   const [loading, setLoading] = useState(false)
+  const [selectedVersions, setSelectedVersions] = useState<number[]>([])
   const user = useAuthStore((s) => s.user)
 
   const fetch = async () => {
@@ -52,7 +55,34 @@ export default function VersionList({ docId, currentVersion, onRollback }: Props
     return false
   }
 
+  const handleSelectVersion = (versionNumber: number, checked: boolean) => {
+    if (checked) {
+      if (selectedVersions.length >= 2) {
+        setSelectedVersions([selectedVersions[1], versionNumber])
+      } else {
+        setSelectedVersions([...selectedVersions, versionNumber])
+      }
+    } else {
+      setSelectedVersions(selectedVersions.filter((v) => v !== versionNumber))
+    }
+  }
+
+  const handleCompare = () => {
+    const sorted = [...selectedVersions].sort((a, b) => a - b)
+    navigate(`/documents/${docId}/compare?v1=${sorted[0]}&v2=${sorted[1]}`)
+  }
+
   const columns = [
+    {
+      title: '对比',
+      width: 50,
+      render: (_: any, record: DocumentVersion) => (
+        <Checkbox
+          checked={selectedVersions.includes(record.version_number)}
+          onChange={(e) => handleSelectVersion(record.version_number, e.target.checked)}
+        />
+      ),
+    },
     {
       title: '版本',
       dataIndex: 'version_number',
@@ -96,11 +126,18 @@ export default function VersionList({ docId, currentVersion, onRollback }: Props
 
   return (
     <div>
-      {user?.role !== 'viewer' && (
-        <Upload beforeUpload={handleUploadVersion} showUploadList={false} maxCount={1}>
-          <Button icon={<UploadOutlined />} style={{ marginBottom: 16 }}>上传新版本</Button>
-        </Upload>
-      )}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+        {user?.role !== 'viewer' && (
+          <Upload beforeUpload={handleUploadVersion} showUploadList={false} maxCount={1}>
+            <Button icon={<UploadOutlined />}>上传新版本</Button>
+          </Upload>
+        )}
+        {selectedVersions.length === 2 && (
+          <Button type="primary" icon={<SwapOutlined />} onClick={handleCompare}>
+            对比选中版本 (v{Math.min(...selectedVersions)} vs v{Math.max(...selectedVersions)})
+          </Button>
+        )}
+      </div>
       <Table rowKey="id" columns={columns} dataSource={versions} pagination={false} />
     </div>
   )

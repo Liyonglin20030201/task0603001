@@ -53,6 +53,7 @@ def process_upload(
 
     text = extract_text(file_path, file_type)
     if text:
+        doc.content = text
         doc.summary = generate_summary(text)
         tag_names = extract_tags(text)
         for tag_name in tag_names:
@@ -65,6 +66,10 @@ def process_upload(
 
     db.commit()
     db.refresh(doc)
+
+    from app.services.search_service import update_fts_entry
+    update_fts_entry(db, doc.id)
+
     return doc
 
 
@@ -99,6 +104,7 @@ def upload_new_version(
 
     text = extract_text(file_path, doc.file_type)
     if text:
+        doc.content = text
         doc.summary = generate_summary(text)
         doc.tags.clear()
         tag_names = extract_tags(text)
@@ -112,6 +118,10 @@ def upload_new_version(
 
     db.commit()
     db.refresh(version)
+
+    from app.services.search_service import update_fts_entry
+    update_fts_entry(db, doc.id)
+
     return version
 
 
@@ -127,6 +137,7 @@ def rollback_to_version(db: Session, doc: Document, target_version_number: int) 
 
     text = extract_text(version.file_path, doc.file_type)
     if text:
+        doc.content = text
         doc.summary = generate_summary(text)
         doc.tags.clear()
         tag_names = extract_tags(text)
@@ -138,9 +149,14 @@ def rollback_to_version(db: Session, doc: Document, target_version_number: int) 
                 db.flush()
             doc.tags.append(tag)
     else:
+        doc.content = None
         doc.summary = None
         doc.tags.clear()
 
     db.commit()
     db.refresh(doc)
+
+    from app.services.search_service import update_fts_entry
+    update_fts_entry(db, doc.id)
+
     return doc

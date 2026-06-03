@@ -13,6 +13,7 @@ class Document(Base):
     original_filename = Column(String(255), nullable=False)
     file_type = Column(String(10), nullable=False)
     summary = Column(Text, nullable=True)
+    content = Column(Text, nullable=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     current_version = Column(Integer, default=1)

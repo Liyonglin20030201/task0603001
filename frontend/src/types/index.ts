@@ -78,3 +78,72 @@ export interface DocumentPermission {
   granted_at: string
   granted_by: number | null
 }
+
+export interface SearchResultItem {
+  id: number
+  title: string
+  file_type: string
+  title_highlight: string
+  summary_highlight: string
+  content_highlight: string
+  relevance: number
+  tags: string[]
+  created_at: string
+}
+
+export interface SearchResponse {
+  items: SearchResultItem[]
+  query: string
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface FavoriteCategory {
+  id: number
+  name: string
+  created_at: string
+  count: number
+}
+
+export interface Favorite {
+  id: number
+  document_id: number
+  category_id: number | null
+  created_at: string
+  document: DocumentItem
+}
+
+export interface FavoriteStatus {
+  is_favorited: boolean
+  favorite_id: number | null
+  category_id: number | null
+}
+
+export interface QuickAccessData {
+  recent: DocumentItem[]
+  favorites: DocumentItem[]
+}
+
+export interface DiffLine {
+  type: 'equal' | 'add' | 'delete' | 'change'
+  line_left: number | null
+  line_right: number | null
+  content_left: string
+  content_right: string
+}
+
+export interface DiffStats {
+  additions: number
+  deletions: number
+  changes: number
+  total_lines: number
+}
+
+export interface VersionDiffResponse {
+  document_id: number
+  version_left: number
+  version_right: number
+  diff_lines: DiffLine[]
+  stats: DiffStats
+}

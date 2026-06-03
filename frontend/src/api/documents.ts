@@ -35,3 +35,6 @@ export const getPreviewUrl = (docId: number) =>
 
 export const getDownloadUrl = (docId: number, versionNumber: number) =>
   `/api/documents/${docId}/versions/${versionNumber}/download`
+
+export const compareVersions = (docId: number, v1: number, v2: number) =>
+  client.get(`/documents/${docId}/versions/compare`, { params: { v1, v2 } })

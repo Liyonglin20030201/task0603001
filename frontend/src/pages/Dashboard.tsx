@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Table, Input, Select, DatePicker, Tag, Space, Button, Typography } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
+import { Table, Input, Select, DatePicker, Tag, Space, Button, Typography, Card, Row, Col, List } from 'antd'
+import { SearchOutlined, ClockCircleOutlined, StarOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { listDocuments } from '../api/documents'
 import { listProjects } from '../api/projects'
 import { listTags } from '../api/tags'
-import { DocumentItem, Project, Tag as TagType } from '../types'
+import { getQuickAccess } from '../api/favorites'
+import { DocumentItem, Project, Tag as TagType, QuickAccessData } from '../types'
 
 const { RangePicker } = DatePicker
 
@@ -19,6 +20,7 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([])
   const [tags, setTags] = useState<TagType[]>([])
   const [filters, setFilters] = useState<Record<string, any>>({})
+  const [quickAccess, setQuickAccess] = useState<QuickAccessData | null>(null)
 
   const fetchDocs = async (p = page, f = filters) => {
     setLoading(true)
@@ -35,6 +37,7 @@ export default function Dashboard() {
     fetchDocs()
     listProjects().then((r) => setProjects(r.data))
     listTags().then((r) => setTags(r.data))
+    getQuickAccess().then((r) => setQuickAccess(r.data))
   }, [])
 
   const columns = [
@@ -67,6 +70,53 @@ export default function Dashboard() {
 
   return (
     <div>
+      {quickAccess && (quickAccess.recent.length > 0 || quickAccess.favorites.length > 0) && (
+        <Row gutter={16} style={{ marginBottom: 24 }}>
+          {quickAccess.recent.length > 0 && (
+            <Col span={12}>
+              <Card
+                title={<span><ClockCircleOutlined style={{ marginRight: 8 }} />最近访问</span>}
+                size="small"
+              >
+                <List
+                  size="small"
+                  dataSource={quickAccess.recent.slice(0, 5)}
+                  renderItem={(item) => (
+                    <List.Item style={{ padding: '4px 0' }}>
+                      <a onClick={() => navigate(`/documents/${item.id}`)} style={{ flex: 1 }}>
+                        {item.title}
+                      </a>
+                      <Tag style={{ marginLeft: 8 }}>{item.file_type.toUpperCase()}</Tag>
+                    </List.Item>
+                  )}
+                />
+              </Card>
+            </Col>
+          )}
+          {quickAccess.favorites.length > 0 && (
+            <Col span={12}>
+              <Card
+                title={<span><StarOutlined style={{ marginRight: 8, color: '#faad14' }} />我的收藏</span>}
+                size="small"
+              >
+                <List
+                  size="small"
+                  dataSource={quickAccess.favorites.slice(0, 5)}
+                  renderItem={(item) => (
+                    <List.Item style={{ padding: '4px 0' }}>
+                      <a onClick={() => navigate(`/documents/${item.id}`)} style={{ flex: 1 }}>
+                        {item.title}
+                      </a>
+                      <Tag style={{ marginLeft: 8 }}>{item.file_type.toUpperCase()}</Tag>
+                    </List.Item>
+                  )}
+                />
+              </Card>
+            </Col>
+          )}
+        </Row>
+      )}
+
       <Typography.Title level={4}>文档列表</Typography.Title>
       <Space wrap style={{ marginBottom: 16 }}>
         <Select

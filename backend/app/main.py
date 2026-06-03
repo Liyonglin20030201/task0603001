@@ -2,9 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base
-from app.routers import auth, documents, comments, projects, tags, users, document_permissions
+from app.routers import auth, documents, comments, projects, tags, users, document_permissions, search, favorites
+from app.services.search_service import init_fts_table
 
 Base.metadata.create_all(bind=engine)
+init_fts_table(engine)
 
 app = FastAPI(title="Knowledge Base API", version="1.0.0")
 
@@ -23,6 +25,8 @@ app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 app.include_router(tags.router, prefix="/api/tags", tags=["tags"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(document_permissions.router, prefix="/api/documents", tags=["permissions"])
+app.include_router(search.router, prefix="/api/search", tags=["search"])
+app.include_router(favorites.router, prefix="/api/favorites", tags=["favorites"])
 
 
 @app.get("/api/health")

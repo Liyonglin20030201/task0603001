@@ -9,6 +9,9 @@ import DocumentDetail from './pages/DocumentDetail'
 import Projects from './pages/Projects'
 import Trash from './pages/Trash'
 import UserManagement from './pages/UserManagement'
+import Search from './pages/Search'
+import Favorites from './pages/Favorites'
+import VersionDiff from './pages/VersionDiff'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token)
@@ -32,7 +35,10 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="upload" element={<Upload />} />
         <Route path="documents/:id" element={<DocumentDetail />} />
+        <Route path="documents/:id/compare" element={<VersionDiff />} />
         <Route path="projects" element={<Projects />} />
+        <Route path="search" element={<Search />} />
+        <Route path="favorites" element={<Favorites />} />
         <Route path="trash" element={<Trash />} />
         <Route path="admin/users" element={<UserManagement />} />
       </Route>

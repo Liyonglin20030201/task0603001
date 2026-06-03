@@ -6,6 +6,7 @@ import { DocumentItem } from '../types'
 import VersionList from '../components/VersionList'
 import CommentList from '../components/CommentList'
 import PermissionPanel from '../components/PermissionPanel'
+import FavoriteButton from '../components/FavoriteButton'
 import PdfViewer from '../components/PdfViewer'
 import { useAuthStore } from '../store/authStore'
 import dayjs from 'dayjs'
@@ -61,7 +62,10 @@ export default function DocumentDetail() {
 
   return (
     <div>
-      <Typography.Title level={4}>{doc.title}</Typography.Title>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <Typography.Title level={4} style={{ margin: 0 }}>{doc.title}</Typography.Title>
+        <FavoriteButton documentId={doc.id} />
+      </div>
       <Descriptions bordered size="small" column={2} style={{ marginBottom: 16 }}>
         <Descriptions.Item label="文件名">{doc.original_filename}</Descriptions.Item>
         <Descriptions.Item label="类型">{doc.file_type.toUpperCase()}</Descriptions.Item>
