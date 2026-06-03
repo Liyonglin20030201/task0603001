@@ -7,7 +7,6 @@ def init_fts_table(engine):
         conn.execute(sa_text("""
             CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
                 title, summary, content, tags,
-                content='',
                 tokenize='unicode61'
             )
         """))

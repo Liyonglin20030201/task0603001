@@ -2,6 +2,7 @@ import pytest
 import os
 import sys
 from sqlalchemy import create_engine
+from sqlalchemy import text as sa_text
 from sqlalchemy.orm import sessionmaker
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -11,6 +12,7 @@ from app.dependencies import get_db
 from app.main import app
 from app.models.user import User
 from app.services.auth_service import hash_password, create_access_token
+from app.services.search_service import init_fts_table
 
 TEST_DB_URL = "sqlite:///./test_kb.db"
 engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
@@ -20,7 +22,11 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 @pytest.fixture(autouse=True)
 def setup_db():
     Base.metadata.create_all(bind=engine)
+    init_fts_table(engine)
     yield
+    with engine.connect() as conn:
+        conn.execute(sa_text("DROP TABLE IF EXISTS documents_fts"))
+        conn.commit()
     Base.metadata.drop_all(bind=engine)
 
 
