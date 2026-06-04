@@ -12,6 +12,9 @@ import UserManagement from './pages/UserManagement'
 import Search from './pages/Search'
 import Favorites from './pages/Favorites'
 import VersionDiff from './pages/VersionDiff'
+import Notifications from './pages/Notifications'
+import Statistics from './pages/Statistics'
+import SharedDocument from './pages/SharedDocument'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token)
@@ -24,6 +27,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/shared/:token" element={<SharedDocument />} />
       <Route
         path="/*"
         element={
@@ -39,8 +43,10 @@ export default function App() {
         <Route path="projects" element={<Projects />} />
         <Route path="search" element={<Search />} />
         <Route path="favorites" element={<Favorites />} />
+        <Route path="notifications" element={<Notifications />} />
         <Route path="trash" element={<Trash />} />
         <Route path="admin/users" element={<UserManagement />} />
+        <Route path="admin/statistics" element={<Statistics />} />
       </Route>
     </Routes>
   )

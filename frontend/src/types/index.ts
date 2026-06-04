@@ -147,3 +147,73 @@ export interface VersionDiffResponse {
   diff_lines: DiffLine[]
   stats: DiffStats
 }
+
+export interface ShareLink {
+  id: number
+  document_id: number
+  token: string
+  is_permanent: boolean
+  expires_at: string | null
+  max_access_count: number | null
+  current_access_count: number
+  has_password: boolean
+  is_active: boolean
+  created_at: string
+}
+
+export interface SharedDocument {
+  id: number
+  title: string
+  original_filename: string
+  file_type: string
+  summary: string | null
+  content: string | null
+  current_version: number
+  created_at: string
+}
+
+export interface BatchResult {
+  total: number
+  succeeded: number
+  failed: number
+  errors: { document_id: number; error: string }[]
+}
+
+export interface Subscription {
+  id: number
+  user_id: number
+  document_id: number | null
+  project_id: number | null
+  created_at: string
+}
+
+export interface Notification {
+  id: number
+  event_type: string
+  document_id: number | null
+  actor_id: number | null
+  message: string
+  is_read: boolean
+  created_at: string
+}
+
+export interface NotificationListResponse {
+  items: Notification[]
+  total: number
+  unread_count: number
+}
+
+export interface SystemStats {
+  total_documents: number
+  total_visits: number
+  total_users: number
+  popular_documents: { document_id: number; title: string; access_count: number }[]
+  active_users: { user_id: number; username: string; access_count: number }[]
+}
+
+export interface DocumentStats {
+  document_id: number
+  total_accesses: number
+  access_records: { user_id: number; username: string; accessed_at: string }[]
+  version_history: { version_number: number; uploaded_by: number | null; uploader_username: string | null; file_size: number; created_at: string }[]
+}

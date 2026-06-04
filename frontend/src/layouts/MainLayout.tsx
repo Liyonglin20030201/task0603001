@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, Button, Typography } from 'antd'
+import { Layout, Menu, Button, Typography, Badge } from 'antd'
 import {
   FileTextOutlined,
   UploadOutlined,
@@ -9,8 +9,12 @@ import {
   LogoutOutlined,
   SearchOutlined,
   StarOutlined,
+  BellOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/authStore'
+import { useState, useEffect } from 'react'
+import { listNotifications } from '../api/subscriptions'
 
 const { Sider, Header, Content } = Layout
 
@@ -18,17 +22,26 @@ export default function MainLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuthStore()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    listNotifications({ page: 1, page_size: 1 })
+      .then(({ data }) => setUnreadCount(data.unread_count))
+      .catch(() => {})
+  }, [location.pathname])
 
   const menuItems = [
     { key: '/', icon: <FileTextOutlined />, label: '文档列表' },
     { key: '/search', icon: <SearchOutlined />, label: '全文搜索' },
     { key: '/favorites', icon: <StarOutlined />, label: '我的收藏' },
+    { key: '/notifications', icon: <BellOutlined />, label: unreadCount > 0 ? `通知 (${unreadCount})` : '通知' },
     ...(user?.role !== 'viewer'
       ? [{ key: '/upload', icon: <UploadOutlined />, label: '上传文档' }]
       : []),
     { key: '/projects', icon: <ProjectOutlined />, label: '项目管理' },
     ...(user?.role === 'admin'
       ? [
+          { key: '/admin/statistics', icon: <BarChartOutlined />, label: '系统统计' },
           { key: '/trash', icon: <DeleteOutlined />, label: '回收站' },
           { key: '/admin/users', icon: <UserOutlined />, label: '用户管理' },
         ]

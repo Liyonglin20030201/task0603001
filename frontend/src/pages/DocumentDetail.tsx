@@ -8,6 +8,9 @@ import CommentList from '../components/CommentList'
 import PermissionPanel from '../components/PermissionPanel'
 import FavoriteButton from '../components/FavoriteButton'
 import PdfViewer from '../components/PdfViewer'
+import SharePanel from '../components/SharePanel'
+import SubscribeButton from '../components/SubscribeButton'
+import DocumentStatsPanel from '../components/DocumentStatsPanel'
 import { useAuthStore } from '../store/authStore'
 import dayjs from 'dayjs'
 
@@ -58,12 +61,24 @@ export default function DocumentDetail() {
       children: <VersionList docId={doc.id} currentVersion={doc.current_version} onRollback={fetchDoc} />,
     },
     ...(isOwnerOrAdmin
-      ? [{
-          key: 'permissions',
-          label: '权限管理',
-          children: <PermissionPanel docId={doc.id} />,
-        }]
+      ? [
+          {
+            key: 'permissions',
+            label: '权限管理',
+            children: <PermissionPanel docId={doc.id} />,
+          },
+          {
+            key: 'shares',
+            label: '分享管理',
+            children: <SharePanel docId={doc.id} isOwnerOrAdmin={isOwnerOrAdmin} />,
+          },
+        ]
       : []),
+    {
+      key: 'stats',
+      label: '统计',
+      children: <DocumentStatsPanel docId={doc.id} />,
+    },
   ]
 
   return (
@@ -71,6 +86,7 @@ export default function DocumentDetail() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
         <Typography.Title level={4} style={{ margin: 0 }}>{doc.title}</Typography.Title>
         <FavoriteButton documentId={doc.id} />
+        <SubscribeButton documentId={doc.id} />
       </div>
       <Descriptions bordered size="small" column={2} style={{ marginBottom: 16 }}>
         <Descriptions.Item label="文件名">{doc.original_filename}</Descriptions.Item>
