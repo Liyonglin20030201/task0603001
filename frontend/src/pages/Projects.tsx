@@ -1,19 +1,22 @@
 import { useState, useEffect } from 'react'
 import { Table, Button, Modal, Form, Input, Select, Space, message, Typography, Popconfirm } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
-import { listProjects, createProject, deleteProject, addMember, removeMember } from '../api/projects'
+import { PlusOutlined, EditOutlined } from '@ant-design/icons'
+import { listProjects, createProject, updateProject, deleteProject, addMember, removeMember } from '../api/projects'
 import { listUsers } from '../api/users'
 import { Project, User } from '../types'
 import { useAuthStore } from '../store/authStore'
+import SubscribeButton from '../components/SubscribeButton'
 
 export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
   const [memberModalOpen, setMemberModalOpen] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [form] = Form.useForm()
+  const [editForm] = Form.useForm()
   const [memberForm] = Form.useForm()
   const currentUser = useAuthStore((s) => s.user)
 
@@ -30,6 +33,11 @@ export default function Projects() {
 
   useEffect(() => { fetch() }, [])
 
+  const getUserName = (userId: number) => {
+    const u = users.find((u) => u.id === userId)
+    return u ? u.username : `用户${userId}`
+  }
+
   const handleCreate = async (values: { name: string; description?: string }) => {
     try {
       await createProject(values)
@@ -40,6 +48,26 @@ export default function Projects() {
     } catch (e: any) {
       message.error(e.response?.data?.detail || '创建失败')
     }
+  }
+
+  const handleEdit = async (values: { name: string; description?: string }) => {
+    if (!selectedProject) return
+    try {
+      await updateProject(selectedProject.id, values)
+      message.success('更新成功')
+      setEditModalOpen(false)
+      editForm.resetFields()
+      setSelectedProject(null)
+      fetch()
+    } catch (e: any) {
+      message.error(e.response?.data?.detail || '更新失败')
+    }
+  }
+
+  const openEditModal = (project: Project) => {
+    setSelectedProject(project)
+    editForm.setFieldsValue({ name: project.name, description: project.description || '' })
+    setEditModalOpen(true)
   }
 
   const handleDelete = async (id: number) => {
@@ -87,12 +115,19 @@ export default function Projects() {
     },
     {
       title: '操作',
-      render: (_: any, record: Project) =>
-        currentUser?.role === 'admin' ? (
-          <Popconfirm title="确定删除?" onConfirm={() => handleDelete(record.id)}>
-            <Button danger size="small">删除</Button>
-          </Popconfirm>
-        ) : null,
+      render: (_: any, record: Project) => (
+        <Space>
+          <SubscribeButton projectId={record.id} />
+          {(currentUser?.role === 'admin' || currentUser?.id === record.owner_id) && (
+            <Button size="small" icon={<EditOutlined />} onClick={() => openEditModal(record)}>编辑</Button>
+          )}
+          {currentUser?.role === 'admin' && (
+            <Popconfirm title="确定删除?" onConfirm={() => handleDelete(record.id)}>
+              <Button danger size="small">删除</Button>
+            </Popconfirm>
+          )}
+        </Space>
+      ),
     },
   ]
 
@@ -120,6 +155,24 @@ export default function Projects() {
       </Modal>
 
       <Modal
+        title="编辑项目"
+        open={editModalOpen}
+        onCancel={() => { setEditModalOpen(false); editForm.resetFields() }}
+        onOk={() => editForm.submit()}
+        okText="保存"
+        cancelText="取消"
+      >
+        <Form form={editForm} layout="vertical" onFinish={handleEdit}>
+          <Form.Item name="name" label="项目名" rules={[{ required: true, message: '请输入项目名' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="description" label="描述">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
         title={`成员管理 - ${selectedProject?.name}`}
         open={memberModalOpen}
         onCancel={() => setMemberModalOpen(false)}
@@ -133,8 +186,12 @@ export default function Projects() {
               size="small"
               dataSource={selectedProject.members}
               columns={[
-                { title: '用户ID', dataIndex: 'user_id' },
-                { title: '角色', dataIndex: 'role' },
+                {
+                  title: '用户',
+                  dataIndex: 'user_id',
+                  render: (userId: number) => getUserName(userId),
+                },
+                { title: '角色', dataIndex: 'role', render: (v: string) => v === 'lead' ? '负责人' : '成员' },
                 {
                   title: '操作',
                   render: (_, m) => (

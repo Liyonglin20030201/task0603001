@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { List, Button, Tag, Typography, Space, Badge, message, Card, Empty } from 'antd'
-import { CheckOutlined, CheckCircleOutlined, BellOutlined } from '@ant-design/icons'
+import { List, Button, Tag, Typography, Space, Badge, message, Card, Empty, Popconfirm } from 'antd'
+import { CheckOutlined, CheckCircleOutlined, BellOutlined, DeleteOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { listNotifications, markNotificationRead, markAllNotificationsRead } from '../api/subscriptions'
+import { listNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification } from '../api/subscriptions'
 import { Notification, NotificationListResponse } from '../types'
 
 export default function Notifications() {
@@ -38,6 +38,16 @@ export default function Notifications() {
     await markAllNotificationsRead()
     message.success('已全部标记为已读')
     fetchData(page)
+  }
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteNotification(id)
+      message.success('已删除')
+      fetchData(page)
+    } catch {
+      message.error('删除失败')
+    }
   }
 
   const eventTypeLabel = (type: string) => {
@@ -109,6 +119,16 @@ export default function Notifications() {
                       标记已读
                     </Button>
                   )}
+                  <Popconfirm title="确认删除此通知?" onConfirm={() => handleDelete(item.id)}>
+                    <Button
+                      type="link"
+                      size="small"
+                      danger
+                      icon={<DeleteOutlined />}
+                    >
+                      删除
+                    </Button>
+                  </Popconfirm>
                 </Space>
               </Space>
             </Card>

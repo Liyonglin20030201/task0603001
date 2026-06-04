@@ -17,3 +17,6 @@ export const markNotificationRead = (notifId: number) =>
 
 export const markAllNotificationsRead = () =>
   client.put('/notifications/read-all')
+
+export const deleteNotification = (notifId: number) =>
+  client.delete(`/notifications/${notifId}`)
