@@ -12,8 +12,10 @@ from app.models.document import Document
 from app.models.document_version import DocumentVersion
 from app.models.document_permission import DocumentPermission
 from app.models.document_access import DocumentAccess
+from app.models.document_access_log import DocumentAccessLog
 from app.schemas.document import DocumentOut, DocumentUpdate, DocumentListResponse, DocumentVersionOut
 from app.services.document_service import process_upload, upload_new_version, rollback_to_version
+from app.services.notification_service import notify_subscribers
 
 router = APIRouter()
 
@@ -134,6 +136,8 @@ def get_document(doc_id: int, db: Session = Depends(get_db), current_user: User 
     else:
         access = DocumentAccess(user_id=current_user.id, document_id=doc.id)
         db.add(access)
+
+    db.add(DocumentAccessLog(user_id=current_user.id, document_id=doc.id))
     db.commit()
 
     return doc
@@ -160,6 +164,8 @@ def record_access(
     else:
         access = DocumentAccess(user_id=current_user.id, document_id=doc.id)
         db.add(access)
+
+    db.add(DocumentAccessLog(user_id=current_user.id, document_id=doc.id))
     db.commit()
 
 
@@ -216,6 +222,13 @@ def restore_document(
     doc.deleted_at = None
     db.commit()
     db.refresh(doc)
+
+    notify_subscribers(
+        db, doc.id, "document_restored", current_user.id,
+        f"文档 '{doc.title}' 已从回收站恢复",
+    )
+    db.commit()
+
     return doc
 
 
@@ -234,6 +247,13 @@ def create_version(
 
     file_bytes = file.file.read()
     version = upload_new_version(db, doc, file_bytes, file.filename, current_user.id)
+
+    notify_subscribers(
+        db, doc.id, "new_version", current_user.id,
+        f"文档 '{doc.title}' 上传了新版本 v{version.version_number}",
+    )
+    db.commit()
+
     return version
 
 

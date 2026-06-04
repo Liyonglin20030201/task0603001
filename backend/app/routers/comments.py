@@ -7,6 +7,7 @@ from app.models.user import User
 from app.models.document import Document
 from app.models.comment import Comment
 from app.schemas.comment import CommentCreate, CommentUpdate, CommentOut
+from app.services.notification_service import notify_subscribers
 
 router = APIRouter()
 
@@ -38,6 +39,10 @@ def create_comment(
     db.add(comment)
     db.commit()
     db.refresh(comment)
+
+    notify_subscribers(db, doc_id, "new_comment", current_user.id, f"文档 '{doc.title}' 收到了新评论")
+    db.commit()
+
     return comment
 
 
